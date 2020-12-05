@@ -567,6 +567,9 @@ String ARVROrigin::get_configuration_warning() const {
 void ARVROrigin::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_world_scale", "world_scale"), &ARVROrigin::set_world_scale);
 	ClassDB::bind_method(D_METHOD("get_world_scale"), &ARVROrigin::get_world_scale);
+	ClassDB::bind_method(D_METHOD("_cache_world_origin_transform"), &ARVROrigin::_cache_world_origin_transform);
+	ClassDB::bind_method(D_METHOD("_update_tracked_camera"), &ARVROrigin::_update_tracked_camera);
+	ClassDB::bind_method(D_METHOD("_arvr_server_processed"), &ARVROrigin::_arvr_server_processed);
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "world_scale"), "set_world_scale", "get_world_scale");
 };
 
@@ -596,6 +599,60 @@ void ARVROrigin::set_world_scale(float p_world_scale) {
 	arvr_server->set_world_scale(p_world_scale);
 };
 
+void ARVROrigin::_cache_world_origin_transform() {
+	pending_global_transform = get_global_transform();
+	{
+#ifndef NO_THREADS
+		MutexLock lock(update_mutex);
+#endif
+		if (!transform_cached) {
+			current_global_transform = pending_global_transform;
+			transform_cached = true;
+			ARVRServer::get_singleton()->connect("processed", this, "_arvr_server_processed");
+		} else {
+			get_pending_global_transform = !get_pending_global_transform;
+
+			// Flip the buffer if required
+			if (get_pending_global_transform) {
+				current_global_transform = pending_global_transform;
+			}
+		}
+	}
+}
+
+void ARVROrigin::_update_tracked_camera() {
+	ARVRServer *arvr_server = ARVRServer::get_singleton();
+	ERR_FAIL_NULL(arvr_server);
+
+	// check if we have a primary interface
+	Ref<ARVRInterface> arvr_interface = arvr_server->get_primary_interface();
+	if (arvr_interface.is_valid() && tracked_camera != NULL) {
+		// get our positioning transform for our headset
+		Transform t = arvr_interface->get_transform_for_eye(ARVRInterface::EYE_MONO, Transform());
+
+		// now apply this to our camera
+		tracked_camera->set_transform(t);
+	};
+}
+
+void ARVROrigin::_arvr_server_processed() {
+	ARVRServer *arvr_server = ARVRServer::get_singleton();
+	Transform world_origin_transform;
+	{
+#ifndef NO_THREADS
+		MutexLock lock(update_mutex);
+#endif
+		world_origin_transform = current_global_transform;
+		get_pending_global_transform = !get_pending_global_transform;
+
+		// Flip the buffer if required
+		if (get_pending_global_transform) {
+			current_global_transform = pending_global_transform;
+		}
+	}
+	arvr_server->set_world_origin(world_origin_transform);
+}
+
 void ARVROrigin::_notification(int p_what) {
 	// get our ARVRServer
 	ARVRServer *arvr_server = ARVRServer::get_singleton();
@@ -604,23 +661,22 @@ void ARVROrigin::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			set_process_internal(true);
+			transform_cached = false;
 		}; break;
 		case NOTIFICATION_EXIT_TREE: {
 			set_process_internal(false);
+			{
+#ifndef NO_THREADS
+				MutexLock lock(update_mutex);
+#endif
+				if (ARVRServer::get_singleton()->is_connected("processed", this, "_arvr_server_processed")) {
+					ARVRServer::get_singleton()->disconnect("processed", this, "_arvr_server_processed");
+				}
+			}
 		}; break;
 		case NOTIFICATION_INTERNAL_PROCESS: {
-			// set our world origin to our node transform
-			arvr_server->set_world_origin(get_global_transform());
-
-			// check if we have a primary interface
-			Ref<ARVRInterface> arvr_interface = arvr_server->get_primary_interface();
-			if (arvr_interface.is_valid() && tracked_camera != NULL) {
-				// get our positioning transform for our headset
-				Transform t = arvr_interface->get_transform_for_eye(ARVRInterface::EYE_MONO, Transform());
-
-				// now apply this to our camera
-				tracked_camera->set_transform(t);
-			};
+			_cache_world_origin_transform();
+			_update_tracked_camera();
 		}; break;
 		default:
 			break;
@@ -637,8 +693,13 @@ void ARVROrigin::_notification(int p_what) {
 
 ARVROrigin::ARVROrigin() {
 	tracked_camera = NULL;
+#ifndef NO_THREADS
+	update_mutex = Mutex::create();
+#endif
 };
 
-ARVROrigin::~ARVROrigin(){
-	// nothing to do here yet for now..
+ARVROrigin::~ARVROrigin() {
+#ifndef NO_THREADS
+	memdelete(update_mutex);
+#endif
 };

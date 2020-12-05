@@ -154,6 +154,12 @@ class ARVROrigin : public Spatial {
 	GDCLASS(ARVROrigin, Spatial);
 
 private:
+	Mutex *update_mutex;
+
+	Transform current_global_transform;
+	Transform pending_global_transform;
+	bool transform_cached = false;
+	bool get_pending_global_transform = true;
 	ARVRCamera *tracked_camera;
 
 protected:
@@ -168,6 +174,10 @@ public:
 
 	float get_world_scale() const;
 	void set_world_scale(float p_world_scale);
+
+	void _cache_world_origin_transform();
+	void _update_tracked_camera();
+	void _arvr_server_processed();
 
 	ARVROrigin();
 	~ARVROrigin();
