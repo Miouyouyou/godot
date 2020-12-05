@@ -149,14 +149,65 @@ bool Dictionary::erase(const Variant &p_key) {
 	return _p->variant_map.erase(p_key);
 }
 
-bool Dictionary::operator==(const Dictionary &p_dictionary) const {
+bool Dictionary::recursive_equal(const Dictionary &p_dictionary, int recursion_count) const {
+	// Cheap checks
+	if (recursion_count > MAX_RECURSION) {
+		ERR_PRINT("Max recursion reached");
+		return true;
+	}
+	if (_p == p_dictionary._p) {
+		return true;
+	}
+	if (_p->variant_map.size() != p_dictionary._p->variant_map.size()) {
+		return false;
+	}
 
-	return _p == p_dictionary._p;
+	// Heavy O(n) check
+	OrderedHashMap<Variant, Variant, VariantHasher, VariantComparator>::Element this_E = _p->variant_map.front();
+	OrderedHashMap<Variant, Variant, VariantHasher, VariantComparator>::Element other_E = p_dictionary._p->variant_map.front();
+	recursion_count++;
+	while (this_E && other_E) {
+		if (
+				!this_E.key().recursive_equal(other_E.key(), recursion_count) ||
+				!this_E.value().recursive_equal(other_E.value(), recursion_count)) {
+			return false;
+		}
+
+		this_E = this_E.next();
+		other_E = other_E.next();
+	}
+
+	return !this_E && !other_E;
+}
+
+bool Dictionary::operator==(const Dictionary &p_dictionary) const {
+	// Cheap checks
+	if (_p == p_dictionary._p) {
+		return true;
+	}
+	if (_p->variant_map.size() != p_dictionary._p->variant_map.size()) {
+		return false;
+	}
+
+	// Heavy O(n) check
+	OrderedHashMap<Variant, Variant, VariantHasher, VariantComparator>::Element this_E = _p->variant_map.front();
+	OrderedHashMap<Variant, Variant, VariantHasher, VariantComparator>::Element other_E = p_dictionary._p->variant_map.front();
+	while (this_E && other_E) {
+		if (
+				!this_E.key().recursive_equal(other_E.key()) ||
+				!this_E.value().recursive_equal(other_E.value())) {
+			return false;
+		}
+
+		this_E = this_E.next();
+		other_E = other_E.next();
+	}
+
+	return !this_E && !other_E;
 }
 
 bool Dictionary::operator!=(const Dictionary &p_dictionary) const {
-
-	return _p != p_dictionary._p;
+	return !this->operator==(p_dictionary);
 }
 
 void Dictionary::_ref(const Dictionary &p_from) const {
@@ -188,13 +239,18 @@ void Dictionary::_unref() const {
 	}
 	_p = NULL;
 }
-uint32_t Dictionary::hash() const {
+uint32_t Dictionary::hash(int recursion_count) const {
+	if (recursion_count > MAX_RECURSION) {
+		ERR_PRINT("Max recursion reached");
+		return 0;
+	}
 
 	uint32_t h = hash_djb2_one_32(Variant::DICTIONARY);
 
+	recursion_count++;
 	for (OrderedHashMap<Variant, Variant, VariantHasher, VariantComparator>::Element E = _p->variant_map.front(); E; E = E.next()) {
-		h = hash_djb2_one_32(E.key().hash(), h);
-		h = hash_djb2_one_32(E.value().hash(), h);
+		h = hash_djb2_one_32(E.key().hash(recursion_count), h);
+		h = hash_djb2_one_32(E.value().hash(recursion_count), h);
 	}
 
 	return h;

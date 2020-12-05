@@ -416,14 +416,15 @@ public:
 
 	//argsVariant call()
 
+	bool recursive_equal(const Variant &p_variant, int recursion_count = 0) const;
 	bool operator==(const Variant &p_variant) const;
 	bool operator!=(const Variant &p_variant) const;
 	bool operator<(const Variant &p_variant) const;
-	uint32_t hash() const;
+	uint32_t hash(int recursion_count = 0) const;
 
 	bool hash_compare(const Variant &p_variant) const;
 	bool booleanize() const;
-	String stringify(List<const void *> &stack) const;
+	String stringify(int recursion_count = 0) const;
 
 	void static_assign(const Variant &p_variant);
 	static void get_constructor_list(Variant::Type p_type, List<MethodInfo> *p_list);

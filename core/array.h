@@ -57,9 +57,11 @@ public:
 	bool empty() const;
 	void clear();
 
+	bool recursive_equal(const Array &p_array, int recursion_count = 0) const;
 	bool operator==(const Array &p_array) const;
+	bool operator!=(const Array &p_array) const;
 
-	uint32_t hash() const;
+	uint32_t hash(int recursion_count = 0) const;
 	void operator=(const Array &p_array);
 
 	void push_back(const Variant &p_value);

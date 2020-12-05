@@ -69,10 +69,11 @@ public:
 
 	bool erase(const Variant &p_key);
 
+	bool recursive_equal(const Dictionary &p_dictionary, int recursion_count = 0) const;
 	bool operator==(const Dictionary &p_dictionary) const;
 	bool operator!=(const Dictionary &p_dictionary) const;
 
-	uint32_t hash() const;
+	uint32_t hash(int recursion_count = 0) const;
 	void operator=(const Dictionary &p_dictionary);
 
 	const Variant *next(const Variant *p_key = NULL) const;

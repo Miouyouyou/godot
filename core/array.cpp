@@ -93,18 +93,71 @@ void Array::clear() {
 	_p->array.clear();
 }
 
-bool Array::operator==(const Array &p_array) const {
+bool Array::recursive_equal(const Array &p_array, int recursion_count) const {
+	// Cheap checks
+	if (recursion_count > MAX_RECURSION) {
+		ERR_PRINT("Max recursion reached");
+		return true;
+	}
+	if (_p == p_array._p) {
+		return true;
+	}
+	const Vector<Variant> &a1 = _p->array;
+	const Vector<Variant> &a2 = p_array._p->array;
+	const int size = a1.size();
+	if (size != a2.size()) {
+		return false;
+	}
 
-	return _p == p_array._p;
+	// Heavy O(n) check
+	recursion_count++;
+	for (int i = 0; i < size; i++) {
+		if (!a1[i].recursive_equal(a2[i], recursion_count)) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
-uint32_t Array::hash() const {
+bool Array::operator==(const Array &p_array) const {
+	// Cheap checks
+	if (_p == p_array._p) {
+		return true;
+	}
+	const Vector<Variant> &a1 = _p->array;
+	const Vector<Variant> &a2 = p_array._p->array;
+	const int size = a1.size();
+	if (size != a2.size()) {
+		return false;
+	}
+
+	// Heavy O(n) check
+	for (int i = 0; i < size; i++) {
+		if (!a1[i].recursive_equal(a2[i])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool Array::operator!=(const Array &p_array) const {
+	return !this->operator==(p_array);
+}
+
+uint32_t Array::hash(int recursion_count) const {
+	if (recursion_count > MAX_RECURSION) {
+		ERR_PRINT("Max recursion reached");
+		return 0;
+	}
 
 	uint32_t h = hash_djb2_one_32(0);
 
+	recursion_count++;
 	for (int i = 0; i < _p->array.size(); i++) {
 
-		h = hash_djb2_one_32(_p->array[i].hash(), h);
+		h = hash_djb2_one_32(_p->array[i].hash(recursion_count), h);
 	}
 	return h;
 }
