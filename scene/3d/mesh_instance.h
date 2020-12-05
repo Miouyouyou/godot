@@ -49,6 +49,8 @@ protected:
 	Ref<SkinReference> skin_ref;
 	NodePath skeleton_path;
 
+	float lightmap_size_scale;
+
 	struct SoftwareSkinning {
 		enum Flags {
 			// Data flags.
@@ -113,6 +115,10 @@ public:
 
 	void set_skeleton_path(const NodePath &p_skeleton);
 	NodePath get_skeleton_path();
+
+	void set_lightmap_size_scale(float p_lightmap_scale);
+	float get_lightmap_size_scale();
+	Vector2 get_lightmap_size_hint();
 
 	int get_surface_material_count() const;
 	void set_surface_material(int p_surface, const Ref<Material> &p_material);

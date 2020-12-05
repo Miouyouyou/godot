@@ -35,6 +35,21 @@ Files extracted from upstream source:
 
 - all .cpp, .h, and .txt files in ConvectionKernels/
 
+## embree
+
+- Upstream: https://github.com/embree/embree
+- Version: 3.12.1 (69bd4c272f1ed608494f233ecfff3feec516880b, 2020)
+- License: Apache 2.0
+
+Files extracted from upstream:
+
+- All cpp files listed in `modules/raytrace/godot_update_embree.py`
+- All header files in the directories listed in `modules/raytrace/godot_update_embree.py`
+
+Some minor changes have been made in order to fix build errors.
+They are marked with `// -- GODOT start --` and `// -- GODOT end --`
+comments.
+
 
 ## eigen
 
@@ -343,6 +358,10 @@ Collection of single-file libraries used in Godot components.
   * Upstream: https://github.com/ivanfratric/polypartition (`src/polypartition.cpp`)
   * Version: TBD, class was renamed
   * License: MIT
+- `stb_rect_pack.h`
+  * Upstream: https://github.com/nothings/stb
+  * Version: 1.00
+  * License: Public Domain (Unlicense) or MIT
 
 ### modules
 
@@ -384,6 +403,37 @@ Files extracted from the upstream source:
 
 - All .h files in `src/`
 - LICENSE.txt
+
+
+## oidn
+
+- Upstream: https://github.com/OpenImageDenoise/oidn
+- Version: 1.1.0 (c58c5216db05ceef4cde5a096862f2eeffd14c06, 2019)
+- License: Apache 2.0
+
+Files extracted from upstream source:
+
+common/* (except tasking.* and CMakeLists.txt)
+core/*
+include/OpenImageDenoise/* (except version.h.in)
+LICENSE.txt
+mkl-dnn/include/*
+mkl-dnn/src/* (except CMakeLists.txt)
+weights/rtlightmap_hdr.tza
+scripts/resource_to_cpp.py
+
+Modified files:
+Modifications are marked with `// -- GODOT start --` and `// -- GODOT end --`.
+Patch files are provided in `oidn/patches/`.
+
+core/autoencoder.cpp
+core/autoencoder.h
+core/common.h
+core/device.cpp
+core/device.h
+core/transfer_function.cpp
+
+scripts/resource_to_cpp.py (used in modules/denoise/resource_to_cpp.py)
 
 
 ## opus
