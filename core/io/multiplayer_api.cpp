@@ -782,21 +782,29 @@ void MultiplayerAPI::rsetp(Node *p_node, int p_peer_id, bool p_unreliable, const
 	_send_rpc(p_node, p_peer_id, p_unreliable, true, p_property, &vptr, 1);
 }
 
-Error MultiplayerAPI::send_bytes(PoolVector<uint8_t> p_data, int p_to, NetworkedMultiplayerPeer::TransferMode p_mode) {
+Error MultiplayerAPI::send_bytes(PoolVector<uint8_t> p_data, int p_to, NetworkedMultiplayerPeer::TransferMode p_mode, int p_offset, int p_length) {
 
-	ERR_FAIL_COND_V_MSG(p_data.size() < 1, ERR_INVALID_DATA, "Trying to send an empty raw packet.");
+	ERR_FAIL_COND_V_MSG(p_offset < 0, ERR_INVALID_DATA, "Offset is less than 0.");
+	ERR_FAIL_COND_V_MSG(p_offset > p_data.size(), ERR_INVALID_DATA, "Offset is greater than data size.");
+
+	if (p_length < 0) {
+		p_length = p_data.size() - p_offset;
+	}
+
+	ERR_FAIL_COND_V_MSG(p_length > p_data.size() - p_offset, ERR_INVALID_DATA, "Length is greater than data size.");
+	ERR_FAIL_COND_V_MSG(p_length < 1, ERR_INVALID_DATA, "Trying to send an empty raw packet.");
 	ERR_FAIL_COND_V_MSG(!network_peer.is_valid(), ERR_UNCONFIGURED, "Trying to send a raw packet while no network peer is active.");
 	ERR_FAIL_COND_V_MSG(network_peer->get_connection_status() != NetworkedMultiplayerPeer::CONNECTION_CONNECTED, ERR_UNCONFIGURED, "Trying to send a raw packet via a network peer which is not connected.");
 
-	MAKE_ROOM(p_data.size() + 1);
+	MAKE_ROOM(p_length + 1);
 	PoolVector<uint8_t>::Read r = p_data.read();
 	packet_cache.write[0] = NETWORK_COMMAND_RAW;
-	memcpy(&packet_cache.write[1], &r[0], p_data.size());
+	memcpy(&packet_cache.write[1], &r[p_offset], p_length);
 
 	network_peer->set_target_peer(p_to);
 	network_peer->set_transfer_mode(p_mode);
 
-	return network_peer->put_packet(packet_cache.ptr(), p_data.size() + 1);
+	return network_peer->put_packet(packet_cache.ptr(), p_length + 1);
 }
 
 void MultiplayerAPI::_process_raw(int p_from, const uint8_t *p_packet, int p_packet_len) {
